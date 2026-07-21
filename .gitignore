@@ -48,3 +48,6 @@ next-env.d.ts
 
 # open-next build output
 /.open-next/
+
+# wrangler local secrets
+.dev.vars

@@ -63,17 +63,41 @@ npm run dev
 - วางได้สูงสุด 100 ใบต่อครั้ง, คำห้ามพูดเก็บสูงสุด 8 คำต่อใบ
 - กดปุ่ม **Copy example JSON** ในหน้าจัดการหัวข้อ แล้วเอาไปให้ AI generate ตาม format ได้เลย
 
-## Deployment (Cloudflare)
+## Deployment (Cloudflare Workers)
 
-ใช้ [`@opennextjs/cloudflare`](https://opennext.js.org/cloudflare) (ตัวแทน `@cloudflare/next-on-pages` ที่ deprecated ไปแล้ว)
+Deploy ด้วย [`@opennextjs/cloudflare`](https://opennext.js.org/cloudflare) — config พร้อมหมดแล้ว (`open-next.config.ts`, `wrangler.toml`, npm scripts)
 
 ```bash
-# 1. สร้างฐานข้อมูล D1 จริง (ต้อง wrangler login ก่อน)
+# 1. login Cloudflare (เปิด browser ให้ยืนยัน)
+npx wrangler login
+
+# 2. สร้างฐานข้อมูล D1 จริงบน Cloudflare
 npx wrangler d1 create taboo-db
-# นำ database_id มาใส่ใน wrangler.toml
+#    → copy "database_id" ที่ได้ ไปแทน <REPLACE_WITH_D1_DATABASE_ID> ใน wrangler.toml
 
-# 2. สร้างตารางบน remote
-npx wrangler d1 execute taboo-db --remote --file=./schema.sql
+# 3. สร้างตารางบน D1 remote
+npm run db:migrate:remote
 
-# 3. ตั้ง Clerk production keys เป็น secret แล้ว build + deploy ตามคู่มือ opennext
+# 4. ใส่ Clerk secret key เป็น Worker secret (ใช้ตอน runtime, ไม่ commit)
+npx wrangler secret put CLERK_SECRET_KEY
+
+# 5. build + deploy
+npm run deploy
 ```
+
+**สำคัญเรื่อง key 2 ตัว (คนละจังหวะกัน):**
+| Key | ใช้เมื่อไหร่ | ตั้งที่ไหน |
+|---|---|---|
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | ฝังตอน **build** (อยู่ในโค้ดฝั่ง client) | ต้องมีใน `.env` ตอนรัน `npm run deploy` |
+| `CLERK_SECRET_KEY` | ตอน **runtime** (server) | `wrangler secret put` (ข้อ 4) |
+
+→ เพราะ publishable key ถูก build เข้าไปในไฟล์ตอน `npm run deploy` เลยต้องอยู่ใน `.env` ไม่ใช่ Worker secret
+
+**ทดสอบ build บนเครื่องก่อน deploy** (รันบน Cloudflare runtime จริงผ่าน workerd):
+
+```bash
+npm run preview -- --port 8799   # 8787 เป็น default แต่ถ้าชน port อื่น ใช้ --port
+```
+
+> **Clerk production:** ตอน deploy จริงควรใช้ production instance ของ Clerk (key `pk_live_`/`sk_live_`)
+> และเพิ่ม domain ของ Worker ใน Clerk Dashboard → Domains ด้วย

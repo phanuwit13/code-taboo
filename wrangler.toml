@@ -1,7 +1,12 @@
-# Cloudflare config — ใช้ตอน deploy ขึ้น Cloudflare (ดู README ส่วน Deployment)
+# Cloudflare Workers config — deploy ผ่าน @opennextjs/cloudflare (npm run deploy)
 name = "code-taboo"
+main = ".open-next/worker.js"
 compatibility_date = "2026-07-01"
 compatibility_flags = ["nodejs_compat"]
+
+[assets]
+directory = ".open-next/assets"
+binding = "ASSETS"
 
 [[d1_databases]]
 binding = "DB"

@@ -20,6 +20,12 @@ _Last updated: 2026-07-22 01:35_
 - 2026-07-21 — default deck 26 ใบอยู่ใน `lib/cards.ts` (ไม่ต้องพึ่ง DB)
 - 2026-07-21 — ห้ามใช้ font-mono + tracking กว้างกับข้อความไทย (ดู MEMORY.md)
 
+## Deploy (พร้อมแล้ว — เหลือขั้นที่ต้อง Cloudflare login)
+- Config พร้อม: `open-next.config.ts`, `wrangler.toml` (main=.open-next/worker.js, ASSETS + D1 binding), scripts `deploy`/`preview`/`db:migrate:*` ใน package.json
+- `middleware.ts` (edge) — **ห้ามเปลี่ยนกลับเป็น proxy.ts (Node)** เพราะ OpenNext/Workers ไม่รองรับ Node middleware
+- Verified: `opennextjs-cloudflare build` ผ่าน + preview บน workerd จริงเสิร์ฟหน้าเกม 200, /decks ไม่ leak, ไม่มี runtime error
+- เหลือทำ (ดู README ส่วน Deployment): `wrangler login` → `wrangler d1 create taboo-db` → ใส่ database_id ใน wrangler.toml → `npm run db:migrate:remote` → set Clerk production keys เป็น secret → `npm run deploy`
+- ⚠️ port 8787 (default wrangler preview) ชนกับ Docker LLM server ของ user — ใช้ `-- --port 8799` เวลา preview
+
 ## Next Up
-- [ ] Deploy ขึ้น Cloudflare Workers: `wrangler d1 create taboo-db` (remote) → ใส่ database_id ใน wrangler.toml → migrate remote → ตั้ง Clerk production keys → build ด้วย `@opennextjs/cloudflare`
 - [ ] (optional) แก้ไขการ์ดรายใบ / แชร์หัวข้อให้เพื่อนในทีม / เลือกหลายหัวข้อพร้อมกันตอนเล่น
