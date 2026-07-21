@@ -1,36 +1,79 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🎮 Code Taboo
 
-## Getting Started
+เกมใบ้คำศัพท์สาย dev สำหรับสันทนาการทีม Frontend — แข่งกัน 2 ทีม (A/B) ใบ้คำเป้าหมายโดยห้ามพูดคำต้องห้ามบนการ์ด ทีมไหนทายถูกกดเก็บแต้มทีมนั้น ตั้งเวลาต่อข้อได้ (5–120 วินาที) ถ้าหมดเวลาไม่มีใครได้แต้มแล้วข้ามไปข้อถัดไปอัตโนมัติ
 
-First, run the development server:
+Login ด้วย Clerk แล้วสร้าง**หัวข้อโจทย์ของตัวเอง**ได้ — เพิ่มการ์ดด้วยการวาง JSON (มีปุ่ม Copy example JSON เอาไปให้ AI ช่วย generate)
+
+Design: minimal โทนขาว–น้ำเงิน
+
+## Tech Stack
+
+- **Next.js 16** (App Router) + TypeScript
+- **Tailwind CSS v4**
+- **Clerk** — authentication (`@clerk/nextjs`)
+- **Cloudflare D1** — เก็บหัวข้อ/การ์ดของแต่ละ user (local dev ใช้ miniflare ผ่าน `@opennextjs/cloudflare` ไม่ต้อง login Cloudflare)
+
+## เริ่มใช้งาน
 
 ```bash
+npm install
+
+# ตั้งค่า Clerk keys (copy จาก dashboard.clerk.com → API Keys)
+cp .env.example .env   # แล้วเติมค่า 2 ตัว
+# ไม่ใส่ก็รันได้ — Clerk จะเข้า keyless mode ให้อัตโนมัติใน dev
+
+# สร้างตารางใน D1 local
+npx wrangler d1 execute taboo-db --local --file=./schema.sql
+
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+เปิด [http://localhost:3000](http://localhost:3000)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+> ⚠️ ห้าม commit `.env` (gitignored อยู่แล้ว) — key เก็บใน Keychain/env เท่านั้นตาม team rules
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## โครงสร้างหลัก
 
-## Learn More
+| ไฟล์ | หน้าที่ |
+|---|---|
+| `lib/cards.ts` | ชุดคำศัพท์ default 26 ใบ + type + shuffle |
+| `lib/parse-cards-json.ts` | validate JSON ที่ user วางมา (pure function) |
+| `lib/example-cards.ts` | ตัวอย่าง JSON สำหรับปุ่ม Copy |
+| `lib/db.ts` | D1 binding ผ่าน `getCloudflareContext` |
+| `app/actions/topics.ts` | Server Actions: CRUD หัวข้อ/การ์ด + import JSON |
+| `app/decks/` | หน้าจัดการหัวข้อ + เพิ่มการ์ด (ต้อง login) |
+| `app/components/game-board.tsx` | ลอจิกเกม 2 ทีม (timer ต่อข้อ, สกอร์ A/B) |
+| `proxy.ts` | clerkMiddleware (Next 16 ใช้ proxy แทน middleware) |
+| `schema.sql` | ตาราง `topics` + `cards` |
 
-To learn more about Next.js, take a look at the following resources:
+## JSON format สำหรับเพิ่มการ์ด
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```json
+[
+  {
+    "target_word": "Docker",
+    "forbidden_words": ["Container", "Image", "ปลาวาฬ", "Deploy"],
+    "category": "DevOps",
+    "difficulty": "Easy"
+  }
+]
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- `category` / `difficulty` ไม่ใส่ก็ได้ (default: `Custom` / `Medium`, difficulty รับ `Easy|Medium|Hard`)
+- วางได้สูงสุด 100 ใบต่อครั้ง, คำห้ามพูดเก็บสูงสุด 8 คำต่อใบ
+- กดปุ่ม **Copy example JSON** ในหน้าจัดการหัวข้อ แล้วเอาไปให้ AI generate ตาม format ได้เลย
 
-## Deploy on Vercel
+## Deployment (Cloudflare)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+ใช้ [`@opennextjs/cloudflare`](https://opennext.js.org/cloudflare) (ตัวแทน `@cloudflare/next-on-pages` ที่ deprecated ไปแล้ว)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+# 1. สร้างฐานข้อมูล D1 จริง (ต้อง wrangler login ก่อน)
+npx wrangler d1 create taboo-db
+# นำ database_id มาใส่ใน wrangler.toml
+
+# 2. สร้างตารางบน remote
+npx wrangler d1 execute taboo-db --remote --file=./schema.sql
+
+# 3. ตั้ง Clerk production keys เป็น secret แล้ว build + deploy ตามคู่มือ opennext
+```

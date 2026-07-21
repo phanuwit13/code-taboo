@@ -1,0 +1,10 @@
+# Cloudflare config — ใช้ตอน deploy ขึ้น Cloudflare (ดู README ส่วน Deployment)
+name = "code-taboo"
+compatibility_date = "2026-07-01"
+compatibility_flags = ["nodejs_compat"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "taboo-db"
+# รัน `npx wrangler d1 create taboo-db` แล้วนำ database_id มาใส่ที่นี่
+database_id = "<REPLACE_WITH_D1_DATABASE_ID>"
