@@ -12,4 +12,4 @@ binding = "ASSETS"
 binding = "DB"
 database_name = "taboo-db"
 # รัน `npx wrangler d1 create taboo-db` แล้วนำ database_id มาใส่ที่นี่
-database_id = "<REPLACE_WITH_D1_DATABASE_ID>"
+database_id = "70da7a15-44c8-4394-9359-b2df6a581c78"
